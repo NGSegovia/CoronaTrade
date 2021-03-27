@@ -1,7 +1,10 @@
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.ml.neuralnet.MapUtils;
+import org.apache.spark.api.java.JavaRDD;
 import org.datavec.api.records.reader.RecordReader;
+import org.datavec.api.records.reader.SequenceRecordReader;
 import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
+import org.datavec.api.records.reader.impl.csv.CSVSequenceRecordReader;
 import org.datavec.api.records.writer.RecordWriter;
 import org.datavec.api.records.writer.impl.csv.CSVRecordWriter;
 import org.datavec.api.split.FileSplit;
@@ -12,7 +15,11 @@ import org.datavec.api.transform.TransformProcess;
 import org.datavec.api.transform.schema.Schema;
 import org.datavec.api.util.ClassPathResource;
 import org.datavec.api.writable.Writable;
+import org.datavec.spark.transform.SparkTransformExecutor;
+import org.datavec.spark.transform.misc.StringToWritablesFunction;
 import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
+import org.deeplearning4j.datasets.datavec.SequenceRecordReaderDataSetIterator;
+import org.deeplearning4j.datasets.iterator.IteratorDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -139,7 +146,7 @@ public class MainMSFT {
         outputFile.createNewFile();
 
         //Define input reader and output writer:
-        RecordReader rr = new CSVRecordReader(1, ',');
+        SequenceRecordReader rr = new CSVSequenceRecordReader(1, ",");
         rr.initialize(new FileSplit(inputFile));
 
         RecordWriter rw = new CSVRecordWriter();
@@ -165,6 +172,26 @@ public class MainMSFT {
         System.out.println("\n\n---- Processed Data File ----");
         String fileContents = FileUtils.readFileToString(outputFile, Charset.defaultCharset());
         System.out.println(fileContents);
+
+
+
+
+        rr.reset();
+        DataSetIterator trainIter = new RecordReaderDataSetIterator(rr, 30, 0, 2);
+        List<List<Writable>> processedData2 = LocalTransformExecutor.execute(trainIter., tp);
+
+        DataSet allData = trainIter.next();
+
+        SplitTestAndTrain testAndTrain = allData.splitTestAndTrain(0.70);
+        DataSet trainingData = testAndTrain.getTrain();
+        DataSet testData = testAndTrain.getTest();
+
+
+        DataSetIterator iterClassification = new SequenceRecordReaderDataSetIterator(rr, 30, 0, 1);
+
+
+
+
 
         System.out.println("\n\nDONE");
     }
