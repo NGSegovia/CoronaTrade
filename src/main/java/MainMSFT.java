@@ -38,15 +38,19 @@ import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.SplitTestAndTrain;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
+import org.nd4j.linalg.dataset.api.preprocessor.NormalizerMinMaxScaler;
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize;
+import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.datavec.local.transforms.LocalTransformExecutor;
+import utils.PlotUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class MainMSFT {
 
@@ -153,6 +157,8 @@ public class MainMSFT {
         String inputPath = baseDir + fileName;
         String timeStamp = String.valueOf(new Date().getTime());
         String outputPath = baseDir + "reports_processed_" + timeStamp;
+        String outputTrain = baseDir + "train_reports_processed_" + timeStamp;
+        String outputTest = baseDir + "test_reports_processed_" + timeStamp;
 
 
         // Spark conf
@@ -179,15 +185,24 @@ public class MainMSFT {
 
         long total = processed.count();
         long train_size = (long) (0.7 * total);
+        long test_size = total - train_size;
         List<List<Writable>> train = processed.takeOrdered((int) train_size);
+        List<List<Writable>> test  = processed.takeOrdered((int) test_size);
+
+
+        toSave= train.map(new WritablesToStringFunction(","));
+        toSave.saveAsTextFile(outputTrain);
+        toSave= test.map(new WritablesToStringFunction(","));
+        toSave.saveAsTextFile(outputTest);
+
+        DataSet a = new DataSet();
 
 
         //=====================================================================
         //      Step 4:
         //=====================================================================
 
-        SequenceRecordReaderDataSetIterator trainData = new SequenceRecordReaderDataSetIterator(processed, trainLabels,
-                                                                32, 2, false, SequenceRecordReaderDataSetIterator.AlignmentMode.ALIGN_END)
+
 
 
         // training data
@@ -201,33 +216,42 @@ public class MainMSFT {
         SequenceRecordReaderDataSetIterator testIter = new SequenceRecordReaderDataSetIterator(testRR, BATCH_SIZE, NUM_LABEL_CLASSES, 1);
 
 
-        int miniBatchSize = 10;
-        int numLabelClasses = 6;
-        DataSetIterator trainData2 = new SequenceRecordReaderDataSetIterator(trainRR, null, miniBatchSize, numLabelClasses,
-                                                                            false, SequenceRecordReaderDataSetIterator.AlignmentMode.ALIGN_END);
-
-        //Normalize the training data
-        DataNormalization normalizer = new NormalizerStandardize();
-        normalizer.fit(trainData);              //Collect training data statistics
-        trainData.reset();
-
-        DataSetIterator trainIter = new RecordReaderDataSetIterator(rr, 30, 0, 2);
-        List<List<Writable>> processedData2 = LocalTransformExecutor.execute(trainIter., tp);
-
-        DataSet allData = trainIter.next();
-
-        SplitTestAndTrain testAndTrain = allData.splitTestAndTrain(0.70);
-        DataSet trainingData = testAndTrain.getTrain();
-        DataSet testData = testAndTrain.getTest();
 
 
-        DataSetIterator iterClassification = new SequenceRecordReaderDataSetIterator(rr, 30, 0, 1);
+        // some common parameters
+        NeuralNetConfiguration.Builder builder = new NeuralNetConfiguration.Builder();
+        builder.seed(123);
+        builder.biasInit(0);
+        builder.miniBatch(false);
+        builder.updater(new RmsProp(0.001));
+        builder.weightInit(WeightInit.XAVIER);
 
+        NeuralNetConfiguration.ListBuilder listBuilder = builder.list();
 
+        // create network
+        MultiLayerConfiguration conf = listBuilder.build();
+        MultiLayerNetwork model = new MultiLayerNetwork(conf);
 
-
+        generateVisuals(model /*MultiLayerNetwork*/, trainIter, testIter);
 
         System.out.println("\n\nDONE");
+    }
+
+
+    public static void generateVisuals(MultiLayerNetwork model, DataSetIterator trainIter, DataSetIterator testIter) throws Exception {
+        double xMin = 0;
+        double xMax = 1.0;
+        double yMin = -0.2;
+        double yMax = 0.8;
+        int nPointsPerAxis = 100;
+
+        //Generate x,y points that span the whole range of features
+        INDArray allXYPoints = PlotUtil.generatePointsOnGraph(xMin, xMax, yMin, yMax, nPointsPerAxis);
+        //Get train data and plot with predictions
+        PlotUtil.plotTrainingData(model, trainIter, allXYPoints, nPointsPerAxis);
+        TimeUnit.SECONDS.sleep(3);
+        //Get test data, run the test data through the network to generate predictions, and plot those predictions:
+        PlotUtil.plotTestData(model, testIter, allXYPoints, nPointsPerAxis);
     }
 
 
