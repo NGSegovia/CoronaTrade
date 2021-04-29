@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.example</groupId>
-    <artifactId>Deeplearning4jTutorial</artifactId>
+    <artifactId>CoronaTrade</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -14,6 +14,7 @@
         <dl4j.version>1.0.0-beta7</dl4j.version>
         <slf4j.version>1.7.5</slf4j.version>
         <scala.binary.version>2.11</scala.binary.version>
+        <spark.version>2.4.3</spark.version>
     </properties>
     <dependencies>
         <dependency>
@@ -30,15 +31,30 @@
         <!-- https://mvnrepository.com/artifact/org.datavec/datavec-spark -->
         <dependency>
             <groupId>org.datavec</groupId>
-            <artifactId>datavec-spark_2.12</artifactId>
+            <artifactId>datavec-spark_2.11</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.datavec/datavec-local -->
+        <!-- https://mvnrepository.com/artifact/org.datavec/datavec-spark -->
         <dependency>
-            <groupId>org.datavec</groupId>
-            <artifactId>datavec-local</artifactId>
-            <version>${dl4j.version}</version>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.22.Final</version>
         </dependency>
 
 
