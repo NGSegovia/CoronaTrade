@@ -1,6 +1,8 @@
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.datavec.api.records.reader.RecordReader;
+import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
 import org.datavec.api.records.reader.impl.csv.CSVSequenceRecordReader;
 import org.datavec.api.transform.TransformProcess;
 import org.datavec.api.transform.schema.Schema;
@@ -32,7 +34,7 @@ public class MainMSFT {
 
 
         int numLinesToSkip = 1;
-        String delimiter = ",";
+        char delimiter = ',';
 
 
         //=====================================================================
@@ -125,10 +127,7 @@ public class MainMSFT {
         sparkConf.setMaster("local[*]");
         sparkConf.setAppName("MSFT Stocks Record Reader Transform");
         JavaSparkContext sc = new JavaSparkContext(sparkConf);
-
-        //Define input reader and output writer:
-        CSVSequenceRecordReader rr = new CSVSequenceRecordReader(numLinesToSkip, delimiter);
-
+        RecordReader rr = new CSVRecordReader(numLinesToSkip, delimiter);
 
         // read the data file
         JavaRDD<String> lines = sc.textFile(inputPath);
